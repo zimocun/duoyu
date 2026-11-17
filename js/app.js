@@ -9,9 +9,11 @@
   var COURSES = {
     en: { id: 'en', target: 'en', source: 'zh', badge: 'EN', name: { zh: '英语', en: 'English' }, sub: { zh: '用中文学英语', en: 'English for Chinese speakers' } },
     de: { id: 'de', target: 'de', source: 'zh', badge: 'DE', name: { zh: '德语', en: 'German' }, sub: { zh: '用中文学德语', en: 'German for Chinese speakers' } },
-    zh: { id: 'zh', target: 'zh', source: 'en', badge: '中', name: { zh: '中文', en: 'Chinese' }, sub: { zh: '用英语学中文', en: 'Learn Chinese in English' } }
+    zh: { id: 'zh', target: 'zh', source: 'en', badge: '中', name: { zh: '中文', en: 'Chinese' }, sub: { zh: '用英语学中文', en: 'Learn Chinese in English' } },
+    den: { id: 'den', target: 'de', source: 'en', badge: 'DE', from: 'EN', name: { zh: '德语', en: 'German' }, sub: { zh: '用英语学德语', en: 'Learn German in English' } }
   };
-  var ORDER = ['en', 'de', 'zh'];
+  // 课程 id 是存档的键（进度、错题、单词熟练度各自独立）；同一目标语言可以有不同母语的课程
+  var ORDER = ['en', 'de', 'zh', 'den'];
   var UCOL = {
     orange: ['#ff9a2e', '#d9780f'], teal: ['#16c1ae', '#0e9586'], purple: ['#a86df0', '#8549cf'], pink: ['#ff75aa', '#dc4f87'],
     blue: ['#2ea6f5', '#1a82c9'], green: ['#58c832', '#3f9e1f'], amber: ['#f5b300', '#c99200'], red: ['#ff5d5d', '#d33c3c']
@@ -125,7 +127,7 @@
     { id: 'xp1000', ic: '🌟', ok: function () { return S.xp >= 1000; } },
     { id: 'unit', ic: '🏆', ok: function () { return ORDER.some(function (c) { return D.units.some(function (u) { return S.prog[c][u.id + '-5']; }); }); } },
     { id: 'w50', ic: '📚', ok: function () { return totalLearned() >= 50; } },
-    { id: 'tri', ic: '🌍', ok: function () { return ORDER.every(function (c) { return S.tri[c]; }); } },
+    { id: 'tri', ic: '🌍', ok: function () { return ['en', 'de', 'zh'].every(function (t) { return ORDER.some(function (c) { return COURSES[c].target === t && S.tri[c]; }); }); } },
     { id: 'early', ic: '🌅', ok: function () { return !!S.flags.early; } },
     { id: 'night', ic: '🌙', ok: function () { return !!S.flags.night; } }
   ];
@@ -199,12 +201,13 @@
   function mmss(sec) { return Math.floor(sec / 60) + ':' + pad(sec % 60); }
 
   // ---------- 存档（只存在本机 localStorage） ----------
+  function perCourse(v) { var o = {}; ORDER.forEach(function (c) { o[c] = typeof v === 'object' ? {} : v; }); return o; }
   function fresh() {
     return {
       v: 1, ob: false, course: 'en', name: '', joined: today(),
       xp: 0, gems: 50, hearts: MAXH, heartAt: 0, goal: 20, daily: {},
       st: { n: 0, last: '', best: 0 }, freeze: 0, frozen: [], boost: 0, noL: 0,
-      prog: { en: {}, de: {}, zh: {} }, cxp: { en: 0, de: 0, zh: 0 }, seen: { en: {}, de: {}, zh: {} }, mist: { en: {}, de: {}, zh: {} },
+      prog: perCourse({}), cxp: perCourse(0), seen: perCourse({}), mist: perCourse({}),
       lessons: 0, perfect: 0, ach: {}, tri: {}, flags: {},
       set: { sfx: true, tts: true, slow: false, py: true, hearts: true, kbd: false }
     };
@@ -356,7 +359,10 @@
       return '<span class="tk' + (h ? ' hint' : '') + '"' + h + '>' + inner + '</span>';
     }).join(lang === 'zh' ? '' : ' ');
   }
-  function flag(id) { return '<span class="flag f-' + id + '">' + COURSES[id].badge + '</span>'; }
+  function flag(id) {
+    var c = COURSES[id];
+    return '<span class="flag f-' + c.target + '">' + c.badge + (c.from ? '<i class="fsrc">' + c.from + '</i>' : '') + '</span>';
+  }
 
   // ---------- 声音：朗读 + 音效 ----------
   var canSpeak = 'speechSynthesis' in window, VOICES = [];
@@ -971,7 +977,7 @@
   function guideSheet(ui) {
     var u = D.units[ui], c = C(), col = UCOL[u.color] || UCOL.orange;
     var h = '<div class="gh" style="--c:' + col[0] + ';--d:' + col[1] + '"><small>' + T('unitN', { n: ui + 1 }) + '</small><b>' + u.icon + ' ' + esc(tx(u.title)) + '</b><span>' + esc(tx(u.desc)) + '</span></div>';
-    if (u.tips && u.tips[c.target]) h += '<div class="tip"><b>💡 ' + T('tip') + '</b><p>' + esc(u.tips[c.target]) + '</p></div>';
+    if (u.tips && u.tips[c.id]) h += '<div class="tip"><b>💡 ' + T('tip') + '</b><p>' + esc(u.tips[c.id]) + '</p></div>';
     h += '<h4 class="gs">' + T('keyWords') + '</h4>' + u.words.map(function (w) {
       return '<div class="vrow"><span class="em">' + w.emoji + '</span><div class="vt"><b>' + wlab(w, c.target) + '</b><small>' + esc(w[c.source]) + '</small></div><button class="spk sm" data-act="say" data-id="' + w.id + '">' + IC.spk + '</button></div>';
     }).join('');

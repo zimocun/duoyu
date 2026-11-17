@@ -13,6 +13,7 @@ window.DL = {
       tips: {
         en: '英语里的 I（我）在句子任何位置都要大写。别人问 How are you? 时，最常见的回答是 I\'m fine, thanks!',
         de: '德语名词的首字母永远大写，比如 der Freund（朋友）。对家人和朋友说 du（你），对陌生人和长辈说 Sie（您）。',
+        den: 'German nouns are always capitalized, e.g. der Freund (friend). Say du to family and friends, and the polite Sie to strangers and older people.',
         zh: 'Mandarin has four tones plus a light neutral tone: mā, má, mǎ, mà. Put 吗 (ma) at the end of a statement to turn it into a yes/no question: 你好吗？'
       },
       words: [
@@ -62,6 +63,7 @@ window.DL = {
       tips: {
         en: '英语介绍职业时名词前要加 a：I am a student（我是学生）。he 指“他”，she 指“她”，说的时候要分清。',
         de: '德语介绍职业时不加冠词：Ich bin Student。女性的职业名称通常加 -in：Lehrer → Lehrerin，Arzt → Ärztin。',
+        den: 'Leave out the article when you say your job: Ich bin Student. Female job titles usually add -in: Lehrer → Lehrerin, Arzt → Ärztin.',
         zh: '是 (shì) links two nouns: 我是学生 = I am a student. Negate it with 不 (bù), which changes to bú before a fourth tone: 不是 (bú shì). 他 (he) and 她 (she) sound the same: tā.'
       },
       words: [
@@ -106,6 +108,7 @@ window.DL = {
       tips: {
         en: '英语可数名词的复数一般加 -s：banana → bananas。water、milk、rice 是不可数名词，没有复数。',
         de: '德语名词有三种性：der（阳性）、die（阴性）、das（中性），记单词时要连冠词一起记。阳性名词作宾语时 ein 要变成 einen：Ich esse einen Apfel。',
+        den: 'Every noun is der (masculine), die (feminine) or das (neuter), so learn each noun together with its article. A masculine object turns ein into einen: Ich esse einen Apfel.',
         zh: 'After a number or 这/那, a noun needs a measure word: 一个苹果 (yí ge píngguǒ) = an apple. 个 (ge) is the most common one. 吃 (chī) is to eat, 喝 (hē) is to drink.'
       },
       words: [
@@ -153,6 +156,7 @@ window.DL = {
       tips: {
         en: '泛指一类动物时英语常用复数：Cats eat fish（猫吃鱼）。mouse 的复数是不规则的 mice。',
         de: '德语里动物“吃”用 fressen，人“吃”才用 essen：Katzen fressen Fisch。很多复数形式不规则，要一起记：die Maus → die Mäuse。',
+        den: 'Animals fressen, people essen: Katzen fressen Fisch. Many plurals are irregular, so learn them as well: die Maus → die Mäuse.',
         zh: 'Animals take different measure words: 只 (zhī) for most animals, 匹 (pǐ) for horses and 头 (tóu) for cows. Chinese nouns have no plural form: 猫 can mean cat or cats.'
       },
       words: [
@@ -198,6 +202,7 @@ window.DL = {
       tips: {
         en: '英语颜色词放在名词前面：a black dog（一只黑色的狗）。数量大于一时名词要用复数：two cats、three eggs。',
         de: '德语形容词放在名词前要加词尾：Ich habe einen schwarzen Hund。颜色当名词用时首字母大写：Ich mag Blau。',
+        den: 'An adjective in front of a noun takes an ending: Ich habe einen schwarzen Hund. A colour used as a noun is capitalized: Ich mag Blau.',
         zh: 'Before a measure word, "two" is 两 (liǎng), not 二 (èr): 两只猫 = two cats. 一 changes tone: yì before tones 1-3 (一只 yì zhī) and yí before tone 4 (一个 yí ge).'
       },
       words: [
@@ -243,6 +248,7 @@ window.DL = {
       tips: {
         en: '主语是 he/she/it 时，一般现在时的动词要加 -s：I work → she works。正在做的事用 be + 动词-ing：I am reading a book。',
         de: '德语陈述句中变位动词总在第二位：Morgen gehe ich in die Schule。morgen（明天）是副词要小写，der Morgen（早上）是名词要大写。',
+        den: 'In a statement the conjugated verb always comes second: Morgen gehe ich in die Schule. morgen (tomorrow) is an adverb in lower case; der Morgen (the morning) is a noun.',
         zh: 'Time words like 今天 (today) and 明天 (tomorrow) go before the verb, either before or after the subject: 我明天去学校 or 明天我去学校. Chinese verbs never change for tense or person.'
       },
       words: [
@@ -293,6 +299,7 @@ window.DL = {
       tips: {
         en: '问地点用 Where is …?：Where is the station?（火车站在哪儿？）说乘坐交通工具用 by：by train、by plane。',
         de: '德语表示乘坐交通工具用 mit 加第三格：mit dem Zug（坐火车）。去某个地方常用 zu：zum Flughafen（= zu dem Flughafen）。',
+        den: 'Use mit plus the dative for transport: mit dem Zug (by train). To say where you are going, zu is common: zum Flughafen (= zu dem Flughafen).',
         zh: 'Ask where something is with 在哪儿 (zài nǎr): 机场在哪儿？ The means of transport comes before the main verb: 坐火车去 (zuò huǒchē qù) = to go by train.'
       },
       words: [
@@ -344,6 +351,7 @@ window.DL = {
       tips: {
         en: '英语谈天气时用 it 作主语：It is cold（天冷）、It is raining（在下雨）。',
         de: '德语谈天气也用 es 作主语：Es regnet，Es ist kalt。说自己冷要用 Mir ist kalt，不能说 Ich bin kalt。',
+        den: 'Weather sentences use es as the subject: Es regnet, Es ist kalt. To say you feel cold, use Mir ist kalt, not Ich bin kalt.',
         zh: '下雨 (xià yǔ) means "to rain" and 下雪 (xià xuě) "to snow", literally "fall rain/snow". Adjectives such as 冷 (cold) usually take 很 (hěn) in statements, even when "very" is not meant.'
       },
       words: [

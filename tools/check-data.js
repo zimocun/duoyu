@@ -11,6 +11,7 @@ var vm = require('vm');
 // 可选参数：要检查的文件路径（默认 js/data.js）
 var DATA_FILE = process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirname, '..', 'js', 'data.js');
 var LANGS = ['zh', 'en', 'de'];
+var TIP_KEYS = ['en', 'de', 'zh', 'den'];
 var COLORS = ['orange', 'teal', 'purple', 'pink', 'blue', 'green', 'amber', 'red'];
 var WORDS_PER_UNIT = 10;
 var SENTENCES_PER_UNIT = 10;
@@ -247,12 +248,16 @@ DL.units.forEach(function (u, ui) {
   if (!isObj(u.tips)) {
     err(uw, 'missing object "tips"');
   } else {
-    LANGS.forEach(function (l) { if (!nonEmptyStr(u.tips[l])) err(uw, 'missing tips.' + l); });
-    Object.keys(u.tips).forEach(function (k) { if (LANGS.indexOf(k) < 0) err(uw, 'unknown tips language "' + k + '"'); });
+    // tips 按课程 id 存：en/de 给中文母语者（中文写），zh/den 给英语母语者（英文写）
+    TIP_KEYS.forEach(function (l) { if (!nonEmptyStr(u.tips[l])) err(uw, 'missing tips.' + l); });
+    Object.keys(u.tips).forEach(function (k) { if (TIP_KEYS.indexOf(k) < 0) err(uw, 'unknown tips course "' + k + '"'); });
     ['en', 'de'].forEach(function (l) {
       if (nonEmptyStr(u.tips[l]) && !HAN.test(u.tips[l])) warn(uw, 'tips.' + l + ' should be written in Chinese');
     });
-    if (nonEmptyStr(u.tips.zh) && hanCount(u.tips.zh) > latinCount(u.tips.zh)) warn(uw, 'tips.zh should be written in English');
+    ['zh', 'den'].forEach(function (l) {
+      if (nonEmptyStr(u.tips[l]) && hanCount(u.tips[l]) > latinCount(u.tips[l])) warn(uw, 'tips.' + l + ' should be written in English');
+    });
+    if (nonEmptyStr(u.tips.den) && HAN.test(u.tips.den)) warn(uw, 'tips.den should not contain Chinese');
   }
 
   // ----- words -----
