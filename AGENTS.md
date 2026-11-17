@@ -2,7 +2,9 @@
 
 多语是一个自用的手机PWA，玩法参考游戏化背单词App（闯关路径、红心、连胜、经验、宝石），但名字、吉祥物（小橘）、配色、图标都是原创的，不要换成任何现成App的名字、角色或美术。三门课程：英语（中文学）、德语（中文学）、中文（英语学）。纯静态页面：原生HTML/CSS/JS，无构建、无后端、无npm依赖，在Safari“添加到主屏幕”后全屏离线使用。
 
-## 运行、测试
+线上地址：https://zimocun.github.io/duoyu/ （GitHub Pages，`main`分支根目录）。
+
+## 运行、测试、发布
 - 本机预览：在本目录运行`python -m http.server 8766 --bind 127.0.0.1`，打开`http://127.0.0.1:8766/`（`.claude/launch.json`里也有这个配置）。改完刷新即可。
 - 内容检查：`node tools/check-data.js`，改了`js/data.js`必须跑通。
 - 没有自动化测试，手动走一遍：引导页、三门课切换、每种题型（看图选词、选意思、听音选词、配对、词块翻译、键盘作答、听写、填空）、答错扣红心、红心用完、退出确认、结算页与连胜页、宝箱、练习三种模式、商店购买、设置开关。
@@ -10,6 +12,7 @@
 - 只在localhost/127.0.0.1下有调试入口`window.__dyl`（`ls()`当前课程状态、`s()`存档、`judge`、`norm`），可用来在浏览器里自动答题走查。
 - 图标：`python tools/make-icons.py`重新生成`icons/`。
 - Service worker只在HTTPS下注册；本机http预览不走缓存。
+- 发布（只有用户明确要求才做）：`git add -A`、`git commit -m "<中文一句话>"`、`git push origin main`，Pages约一分钟生效。GitHub登录由用户自己操作，不要代输入验证码或密码。
 
 ## 文件速览
 - `index.html`：唯一页面（顶栏、四个视图、标签栏、`#lesson`课程层、`#screen`全屏页、`#sheet`底部弹层）。
