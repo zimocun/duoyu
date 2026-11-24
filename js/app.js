@@ -37,7 +37,8 @@
       check: '检查', cont: '继续', skip: '跳过', cantListen: '现在不方便听', useKbd: '使用键盘', useTiles: '使用词块', typeIn: '用{l}输入',
       ln_en: '英语', ln_de: '德语', ln_zh: '中文',
       qPick: '哪个是“{w}”？', qMean: '选择正确的意思', qSay: '怎么说“{w}”？', qHear: '你听到了什么？', qMatch: '配对',
-      qBuild: '翻译这句话', qListen: '听写这句话', qFill: '选择正确的词填空', newWord: '新词',
+      qBuild: '翻译这句话', qListen: '听写这句话', qFill: '选择正确的词填空', newWord: '新词', qIntro: '记住这个新词',
+      lv_A1: '入门', lv_A2: '基础', lv_B1: '进阶', nUnits: '{n} 个单元',
       praise: ['太棒了！', '很好！', '正确！', '完美！', '真厉害！', '好极了！'],
       wrongT: '正确答案：', typo: '注意拼写：', meaning: '意思：', combo: '连对 {n} 题！',
       quitT: '确定要退出吗？', quitSub: '现在退出，本课的进度会丢失。', keep: '继续学习', quit: '退出',
@@ -80,7 +81,8 @@
       check: 'CHECK', cont: 'CONTINUE', skip: 'SKIP', cantListen: "CAN'T LISTEN NOW", useKbd: 'Use keyboard', useTiles: 'Use word bank', typeIn: 'Type in {l}',
       ln_en: 'English', ln_de: 'German', ln_zh: 'Chinese',
       qPick: 'Which one is “{w}”?', qMean: 'Select the correct meaning', qSay: 'How do you say “{w}”?', qHear: 'What do you hear?', qMatch: 'Tap the matching pairs',
-      qBuild: 'Translate this sentence', qListen: 'Type what you hear', qFill: 'Fill in the blank', newWord: 'NEW WORD',
+      qBuild: 'Translate this sentence', qListen: 'Type what you hear', qFill: 'Fill in the blank', newWord: 'NEW WORD', qIntro: 'Learn this word',
+      lv_A1: 'Beginner', lv_A2: 'Elementary', lv_B1: 'Intermediate', nUnits: '{n} units',
       praise: ['Amazing!', 'Nice!', 'Correct!', 'Great job!', 'Excellent!', 'Awesome!'],
       wrongT: 'Correct answer:', typo: 'Watch the spelling:', meaning: 'Meaning:', combo: '{n} in a row!',
       quitT: "Wait, don't go!", quitSub: "You'll lose your progress if you quit now.", keep: 'KEEP LEARNING', quit: 'QUIT',
@@ -240,24 +242,34 @@
   function showPy() { return C().target === 'zh' && S.set.py; }
 
   // ---------- 课程数据索引 ----------
-  var ITEMS = {}, WORDS = [], SENTS = [], NODES = [];
+  var ITEMS = {}, WORDS = [], SENTS = [];
   D.units.forEach(function (u, ui) {
     u.idx = ui;
     u.words.forEach(function (w) { w.u = ui; w.kind = 'w'; ITEMS[w.id] = w; WORDS.push(w); });
     u.sentences.forEach(function (s) { s.u = ui; s.kind = 's'; ITEMS[s.id] = s; SENTS.push(s); });
     u.nodes = KINDS.map(function (k, i) { return { id: u.id + '-' + i, k: k, i: i, u: u }; });
-    NODES = NODES.concat(u.nodes);
   });
+  // 每门课自己的单元和关卡（单元可用 courses 限定只在某些课程出现，比如德语课专属的第9–100单元）
+  var CU = {}, CN = {};
+  ORDER.forEach(function (c) {
+    CU[c] = D.units.filter(function (u) { return !u.courses || u.courses.indexOf(c) >= 0; });
+    CN[c] = [];
+    CU[c].forEach(function (u) { CN[c] = CN[c].concat(u.nodes); });
+  });
+  function units() { return CU[S.course]; }
+  function nodes() { return CN[S.course]; }
+  function unitNo(u) { return units().indexOf(u) + 1; }
   function prog() { return S.prog[S.course]; }
-  function curIdx() { var p = prog(); for (var i = 0; i < NODES.length; i++) if (!p[NODES[i].id]) return i; return NODES.length; }
+  function curIdx() { var p = prog(), N = nodes(); for (var i = 0; i < N.length; i++) if (!p[N[i].id]) return i; return N.length; }
   function nodeState(gi, ci) { return gi < ci ? 'done' : gi === ci ? 'cur' : 'lock'; }
-  function poolW(u) { var a = []; for (var i = 0; i <= u.idx; i++) a = a.concat(D.units[i].words); return a; }
-  function poolS(u) { var a = []; for (var i = 0; i <= u.idx; i++) a = a.concat(D.units[i].sentences); return a; }
+  function upTo(u, f) { var a = [], L = units(); for (var i = 0; i < L.length; i++) { a = a.concat(L[i][f]); if (L[i] === u) break; } return a; }
+  function poolW(u) { return upTo(u, 'words'); }
+  function poolS(u) { return upTo(u, 'sentences'); }
   function learnedW(c) { c = c || S.course; return WORDS.filter(function (w) { return S.seen[c][w.id]; }); }
   function learnedS(c) { c = c || S.course; return SENTS.filter(function (s) { return S.seen[c][s.id]; }); }
   function totalLearned() { var n = 0; ORDER.forEach(function (c) { n += learnedW(c).length; }); return n; }
   function strength(id) { var x = S.seen[S.course][id]; if (!x) return -1; return Math.max(0, x.s - Math.floor((Date.now() - x.t) / (3 * 864e5))); }
-  function coursePct(c) { var p = S.prog[c], n = 0; NODES.forEach(function (x) { if (p[x.id]) n++; }); return Math.round(100 * n / Math.max(1, NODES.length)); }
+  function coursePct(c) { var p = S.prog[c], n = 0; CN[c].forEach(function (x) { if (p[x.id]) n++; }); return Math.round(100 * n / Math.max(1, CN[c].length)); }
 
   // ---------- 分词与答案比对 ----------
   var PUN = /[.,!?;:"“”„«»()¡¿…。，！？；：、（）《》「」]/g;
@@ -285,7 +297,10 @@
     "that's": 'that is', "what's": 'what is', "where's": 'where is', "who's": 'who is', "how's": 'how is', "there's": 'there is', "here's": 'here is',
     "isn't": 'is not', "aren't": 'are not', "wasn't": 'was not', "weren't": 'were not', "don't": 'do not', "doesn't": 'does not', "didn't": 'did not',
     "can't": 'can not', 'cannot': 'can not', "won't": 'will not', "i'll": 'i will', "you'll": 'you will', "we'll": 'we will', "it'll": 'it will',
-    "i've": 'i have', "you've": 'you have', "we've": 'we have', "let's": 'let us', "i'd": 'i would', "haven't": 'have not', "hasn't": 'has not'
+    "i've": 'i have', "you've": 'you have', "we've": 'we have', "let's": 'let us', "i'd": 'i would', "haven't": 'have not', "hasn't": 'has not',
+    "they've": 'they have', "he'll": 'he will', "she'll": 'she will', "they'll": 'they will', "you'd": 'you would', "he'd": 'he would',
+    "she'd": 'she would', "we'd": 'we would', "they'd": 'they would', "hadn't": 'had not', "couldn't": 'could not', "wouldn't": 'would not',
+    "shouldn't": 'should not', "mustn't": 'must not', "needn't": 'need not', "there'll": 'there will', "that'll": 'that will'
   };
   function norm(s, lang) {
     s = String(s || '').toLowerCase().replace(/[’‘`´]/g, "'");
@@ -358,6 +373,12 @@
       var inner = lang === 'zh' && showPy() ? rubyTok(x.raw, x.p) : esc(x.raw);
       return '<span class="tk' + (h ? ' hint' : '') + '"' + h + '>' + inner + '</span>';
     }).join(lang === 'zh' ? '' : ' ');
+  }
+  // 没有 emoji 的词（抽象词）用目标语言首字母的小圆牌代替
+  function wpic(w) {
+    if (w.emoji) return w.emoji;
+    var t = String(w[C().target] || '').replace(/^(der|die|das|sich) /i, '');
+    return '<i class="noem">' + esc(t.charAt(0).toUpperCase()) + '</i>';
   }
   function flag(id) {
     var c = COURSES[id];
@@ -498,7 +519,18 @@
     return out;
   }
   function withAns(e, right) { e.opts = shuffle(e.opts); e.ans = e.opts.indexOf(right); return e; }
-  function exPick(w, pool) { return withAns({ t: 'pick', it: w, opts: [w].concat(others(pool, w, 3, tl())) }, w); }
+  // 看图选词只用有 emoji 的词，且选项的 emoji 互不相同；凑不够就改成选意思
+  function exPick(w, pool) {
+    var em = {}, pics;
+    if (w.emoji) {
+      em[w.emoji] = 1;
+      pics = others(pool.filter(function (x) { return x.emoji; }), w, 6, tl()).filter(function (x) { if (em[x.emoji]) return false; em[x.emoji] = 1; return true; }).slice(0, 3);
+      if (pics.length >= 2) return withAns({ t: 'pick', it: w, opts: [w].concat(pics) }, w);
+    }
+    return exMC(w, pool, rnd(['t2s', 's2t']));
+  }
+  // 新词卡：没有图的词第一次出现时先展示（不计分）
+  function exIntro(w) { return { t: 'intro', it: w }; }
   function exMC(w, pool, dir) { return withAns({ t: 'mc', dir: dir, it: w, opts: [w].concat(others(pool, w, 3, dir === 't2s' ? sl() : tl())) }, w); }
   function exHear(w, pool) { return withAns({ t: 'hear', it: w, opts: [w].concat(others(pool, w, 3, tl())) }, w); }
   function exMatch(ws) { return { t: 'match', ws: ws.slice(0, 5) }; }
@@ -549,7 +581,8 @@
       var ws = n.k === 'w1' ? W.slice(0, 5) : W.slice(5, 10);
       if (ws.length < 2) ws = W.slice(0, 5);
       ws.forEach(function (w, i) {
-        ex.push(exPick(w, W));
+        var p = w.emoji ? exPick(w, W) : null;
+        ex.push(p && p.t === 'pick' ? p : exIntro(w));
         if (i > 0) { var r = ws[i - 1]; ex.push(rnd([exMC(r, W, 't2s'), exMC(r, W, 's2t'), exHear(r, W)])); }
       });
       ex.push(exMatch(shuffle(ws)));
@@ -648,12 +681,13 @@
     lb.scrollTop = 0;
     renderFoot(ex);
     if (ex.t === 'build' || ex.t === 'listen') renderAns();
-    if (S.set.tts && (ex.t === 'hear' || ex.t === 'listen' || (ex.t === 'mc' && ex.dir === 't2s') || (ex.t === 'build' && ex.dir === 't2s'))) setTimeout(function () { sayItem(ex.it); }, 150);
+    if (S.set.tts && (ex.t === 'intro' || ex.t === 'hear' || ex.t === 'listen' || (ex.t === 'mc' && ex.dir === 't2s') || (ex.t === 'build' && ex.dir === 't2s'))) setTimeout(function () { sayItem(ex.it); }, 150);
   }
   function renderFoot(ex) {
     var lf = $('#lf'), aside;
     lf.className = 'lfoot';
     if (ex.t === 'match') { lf.innerHTML = '<div class="lfin"><span></span><button class="btn pri" disabled>' + T('check') + '</button></div>'; return; }
+    if (ex.t === 'intro') { lf.innerHTML = '<div class="lfin"><button class="btn pri" id="chk" data-act="introNext">' + T('cont') + '</button></div>'; return; }
     aside = (ex.t === 'listen' || ex.t === 'hear') ? '<button class="btn ghost" data-act="nolisten">' + T('cantListen') + '</button>' : '<button class="btn ghost" data-act="skip">' + T('skip') + '</button>';
     lf.innerHTML = '<div class="lfin">' + aside + '<button class="btn pri" id="chk" data-act="check" disabled>' + T('check') + '</button></div>';
   }
@@ -666,6 +700,9 @@
   function body(ex) {
     var t = tl(), s = sl(), it = ex.it;
     switch (ex.t) {
+      case 'intro':
+        return '<span class="newb">' + T('newWord') + '</span><h2 class="q">' + T('qIntro') + '</h2><div class="intro">' + (it.emoji ? '<div class="iem">' + it.emoji + '</div>' : '') +
+          '<div class="iw">' + spkBtn(it) + '<b>' + wlab(it, t) + '</b></div><div class="im">' + esc(it[s]) + '</div></div>';
       case 'pick':
         return (isNew(it) ? '<span class="newb">' + T('newWord') + '</span>' : '') + '<h2 class="q">' + esc(T('qPick', { w: it[s] })) + '</h2><div class="cards">' +
           ex.opts.map(function (w, i) { return '<button class="card" data-act="opt" data-i="' + i + '"><span class="kn">' + (i + 1) + '</span><span class="em">' + w.emoji + '</span><span class="lb">' + wlab(w, t) + '</span></button>'; }).join('') + '</div>';
@@ -976,10 +1013,10 @@
   }
   function guideSheet(ui) {
     var u = D.units[ui], c = C(), col = UCOL[u.color] || UCOL.orange;
-    var h = '<div class="gh" style="--c:' + col[0] + ';--d:' + col[1] + '"><small>' + T('unitN', { n: ui + 1 }) + '</small><b>' + u.icon + ' ' + esc(tx(u.title)) + '</b><span>' + esc(tx(u.desc)) + '</span></div>';
+    var h = '<div class="gh" style="--c:' + col[0] + ';--d:' + col[1] + '"><small>' + T('unitN', { n: unitNo(u) }) + (u.level ? ' · ' + u.level : '') + '</small><b>' + u.icon + ' ' + esc(tx(u.title)) + '</b><span>' + esc(tx(u.desc)) + '</span></div>';
     if (u.tips && u.tips[c.id]) h += '<div class="tip"><b>💡 ' + T('tip') + '</b><p>' + esc(u.tips[c.id]) + '</p></div>';
     h += '<h4 class="gs">' + T('keyWords') + '</h4>' + u.words.map(function (w) {
-      return '<div class="vrow"><span class="em">' + w.emoji + '</span><div class="vt"><b>' + wlab(w, c.target) + '</b><small>' + esc(w[c.source]) + '</small></div><button class="spk sm" data-act="say" data-id="' + w.id + '">' + IC.spk + '</button></div>';
+      return '<div class="vrow"><span class="em">' + wpic(w) + '</span><div class="vt"><b>' + wlab(w, c.target) + '</b><small>' + esc(w[c.source]) + '</small></div><button class="spk sm" data-act="say" data-id="' + w.id + '">' + IC.spk + '</button></div>';
     }).join('');
     h += '<h4 class="gs">' + T('keyPhrases') + '</h4>' + u.sentences.map(function (s) {
       return '<div class="vrow"><div class="vt"><b>' + sentHTML(s, c.target, false) + '</b><small>' + esc(disp(s[c.source], c.source)) + '</small></div><button class="spk sm" data-act="say" data-id="' + s.id + '">' + IC.spk + '</button></div>';
@@ -1016,20 +1053,34 @@
     return IC.star;
   }
   function renderLearn() {
-    var ci = curIdx(), h = '';
-    D.units.forEach(function (u, ui) {
-      var col = UCOL[u.color] || UCOL.orange, sign = ui % 2 ? -1 : 1, base = NODES.indexOf(u.nodes[0]);
-      h += '<section class="unit' + (base > ci ? ' future' : '') + '" style="--c:' + col[0] + ';--d:' + col[1] + '">' +
+    var ci = curIdx(), N = nodes(), L = units(), h = '', lv = '';
+    var cu = Math.min(Math.floor(ci / KINDS.length), L.length - 1);   // 当前所在单元的序号
+    var hasLv = L.some(function (u) { return u.level; });
+    L.forEach(function (u, ui) {
+      var col = UCOL[u.color] || UCOL.orange, sign = ui % 2 ? -1 : 1, base = ui * KINDS.length;
+      var ulv = u.level || 'A1';
+      // 级别分段（A1/A2/B1），只在有分级的课程里显示
+      if (hasLv && ulv !== lv) {
+        lv = ulv;
+        var cnt = L.filter(function (x) { return (x.level || 'A1') === lv; }).length;
+        h += '<div class="sect"><b>' + lv + '</b><span>' + T('lv_' + lv) + '</span><small>' + T('nUnits', { n: cnt }) + '</small></div>';
+      }
+      // 当前单元之后再往后的单元先折叠成一条，路径太长时页面更轻
+      var fold = ui > cu + 1;
+      h += '<section class="unit' + (base > ci ? ' future' : '') + (fold ? ' fold' : '') + '" style="--c:' + col[0] + ';--d:' + col[1] + '">' +
         '<div class="ubar"><div class="ut"><small>' + T('unitN', { n: ui + 1 }) + '</small><b>' + esc(tx(u.title)) + '</b><span>' + esc(tx(u.desc)) + '</span></div>' +
-        '<button class="ug" data-act="guide" data-u="' + ui + '">' + IC.book + '<span>' + T('guide') + '</span></button></div><div class="path">';
+        '<button class="ug" data-act="guide" data-u="' + u.idx + '">' + (fold ? IC.lock : IC.book) + '<span>' + T('guide') + '</span></button></div>';
+      if (fold) { h += '</section>'; return; }
+      h += '<div class="path">';
       u.nodes.forEach(function (n, i) {
         var gi = base + i, st = nodeState(gi, ci);
         h += '<div class="nrow" style="--x:' + (OFFS[i] * sign) + 'px"><button class="node ' + st + ' k-' + n.k + '" data-act="node" data-n="' + gi + '">' + nodeIcon(n, st) +
           (st === 'cur' ? '<span class="startb">' + T('start') + '</span>' : '') + '</button></div>';
       });
-      h += '<div class="pmas ' + (sign > 0 ? 'l' : 'r') + '">' + mascot(['happy', 'wink', 'joy'][ui % 3], 104) + '</div></div></section>';
+      if (Math.abs(ui - cu) <= 3) h += '<div class="pmas ' + (sign > 0 ? 'l' : 'r') + '">' + mascot(['happy', 'wink', 'joy'][ui % 3], 104) + '</div>';
+      h += '</div></section>';
     });
-    if (ci >= NODES.length) h += '<div class="pend">' + mascot('joy', 120) + '<p>' + T('courseEnd') + '</p></div>';
+    if (ci >= N.length) h += '<div class="pend">' + mascot('joy', 120) + '<p>' + T('courseEnd') + '</p></div>';
     $('#v-learn').innerHTML = h;
   }
   function scrollToCur(smooth) {
@@ -1041,7 +1092,7 @@
   function togglePop(btn) {
     var gi = +btn.getAttribute('data-n'), row = btn.parentNode, old = $('.pop');
     if (old) { var same = old.parentNode === row; old.remove(); if (same) return; }
-    var n = NODES[gi], st = nodeState(gi, curIdx()), sub, act = '';
+    var n = nodes()[gi], st = nodeState(gi, curIdx()), sub, act = '';
     if (st === 'lock') sub = T('locked');
     else if (n.k === 'chest') {
       sub = st === 'done' ? T('chestDone') : T('chestSub');
@@ -1074,7 +1125,7 @@
       h += '<div class="vgroup"><div class="vgt">' + u.icon + ' ' + esc(tx(u.title)) + '</div>' + ws.map(function (w) {
         var st = Math.max(0, strength(w.id)), bars = '';
         for (var i = 1; i <= 5; i++) bars += '<i class="' + (i <= st ? 'on' : '') + '"></i>';
-        return '<div class="vrow"><span class="em">' + w.emoji + '</span><div class="vt"><b>' + wlab(w, c.target) + '</b><small>' + esc(w[c.source]) + '</small></div><span class="str">' + bars + '</span><button class="spk sm" data-act="say" data-id="' + w.id + '">' + IC.spk + '</button></div>';
+        return '<div class="vrow"><span class="em">' + wpic(w) + '</span><div class="vt"><b>' + wlab(w, c.target) + '</b><small>' + esc(w[c.source]) + '</small></div><span class="str">' + bars + '</span><button class="spk sm" data-act="say" data-id="' + w.id + '">' + IC.spk + '</button></div>';
       }).join('') + '</div>';
     });
     $('#v-practice').innerHTML = h;
@@ -1189,7 +1240,7 @@
       case 'go': {
         var gi = +el.getAttribute('data-n');
         closePop();
-        if (gi <= curIdx()) startNode(NODES[gi]);
+        if (gi <= curIdx()) startNode(nodes()[gi]);
         break;
       }
       case 'guide': guideSheet(+el.getAttribute('data-u')); break;
@@ -1219,6 +1270,13 @@
         }
         break;
       case 'check': check(); break;
+      case 'introNext':
+        if (LS && LS.q[0].t === 'intro') {
+          markSeen(LS.q[0].it, true); save();
+          LS.done++; LS.q.shift();
+          if (!LS.q.length) complete(); else renderEx();
+        }
+        break;
       case 'skip': if (LS && !LS.fb) finishEx(LS.q[0], { ok: false }); break;
       case 'nolisten':
         if (LS && !LS.fb) { S.noL = Date.now() + 15 * 60000; save(); LS.q = LS.q.map(deListen); renderEx(); }
@@ -1292,7 +1350,7 @@
 
   // ---------- 启动 ----------
   // 仅本机预览时暴露调试入口，方便自动走查
-  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__dyl = { ls: function () { return LS; }, s: function () { return S; }, judge: judge, norm: norm };
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__dyl = { ls: function () { return LS; }, s: function () { return S; }, judge: judge, norm: norm, gen: genNode, cn: CN, body: body };
   renderAll();
   if (!S.ob) onboard(0);
   else requestAnimationFrame(function () { scrollToCur(false); });

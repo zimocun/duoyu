@@ -1,6 +1,6 @@
 // 离线缓存：先用缓存秒开，同时在后台取新版本。改了任何前端文件都要提高 CACHE 版本号
-var CACHE = 'dyl-v2';
-var FILES = ['./', 'index.html', 'css/app.css', 'js/data.js', 'js/app.js', 'manifest.webmanifest',
+var CACHE = 'dyl-v3';
+var FILES = ['./', 'index.html', 'css/app.css', 'js/data.js', 'js/data-de.js', 'js/app.js', 'manifest.webmanifest',
   'icons/icon-32.png', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', function (e) {

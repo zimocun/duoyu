@@ -8,10 +8,18 @@ var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
 
-// 可选参数：要检查的文件路径（默认 js/data.js）
-var DATA_FILE = process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirname, '..', 'js', 'data.js');
+// 默认检查 js/data.js 加上 js/data-de.js（存在时）；也可在参数里给出要追加检查的分片文件：
+//   node tools/check-data.js content/de-part-1.js
+// 分片文件写法：window.DL.units.push({...}, {...});
+var ROOT = path.join(__dirname, '..');
+var EXTRA = process.argv.slice(2).map(function (f) { return path.resolve(f); });
+var DATA_FILES = [path.join(ROOT, 'js', 'data.js')];
+if (!EXTRA.length && fs.existsSync(path.join(ROOT, 'js', 'data-de.js'))) DATA_FILES.push(path.join(ROOT, 'js', 'data-de.js'));
+DATA_FILES = DATA_FILES.concat(EXTRA);
+var DATA_FILE = DATA_FILES.join(' + ');
 var LANGS = ['zh', 'en', 'de'];
-var TIP_KEYS = ['en', 'de', 'zh', 'den'];
+var COURSE_IDS = ['en', 'de', 'zh', 'den'];
+var LEVELS = ['A1', 'A2', 'B1'];
 var COLORS = ['orange', 'teal', 'purple', 'pink', 'blue', 'green', 'amber', 'red'];
 var WORDS_PER_UNIT = 10;
 var SENTENCES_PER_UNIT = 10;
@@ -190,20 +198,23 @@ function checkEndMark(where, lang, s) {
 
 // ---------- 加载 ----------
 
-var src;
-try {
-  src = fs.readFileSync(DATA_FILE, 'utf8');
-} catch (e) {
-  console.error('FAIL: cannot read ' + DATA_FILE + ': ' + e.message);
-  process.exit(1);
-}
 var sandbox = { window: {} };
-try {
-  vm.runInNewContext(src, sandbox, { filename: DATA_FILE });
-} catch (e) {
-  console.error('FAIL: js/data.js does not evaluate: ' + (e.stack || e.message));
-  process.exit(1);
-}
+vm.createContext(sandbox);
+DATA_FILES.forEach(function (f) {
+  var src;
+  try {
+    src = fs.readFileSync(f, 'utf8');
+  } catch (e) {
+    console.error('FAIL: cannot read ' + f + ': ' + e.message);
+    process.exit(1);
+  }
+  try {
+    vm.runInContext(src, sandbox, { filename: f });
+  } catch (e) {
+    console.error('FAIL: ' + f + ' does not evaluate: ' + (e.stack || e.message));
+    process.exit(1);
+  }
+});
 var DL = sandbox.window.DL;
 if (!isObj(DL) || !Array.isArray(DL.units)) {
   console.error('FAIL: window.DL.units is missing or not an array');
@@ -216,7 +227,7 @@ var allIds = {};
 var emojiSeen = {};
 var wordStr = { zh: {}, en: {}, de: {} };
 var sentStr = { zh: {}, en: {}, de: {} };
-var colorSeen = {};
+var prevNum = 0;
 var phrases = [];
 var stats = { units: 0, words: 0, sentences: 0, alts: 0, altSentences: 0, altByLang: { zh: 0, en: 0, de: 0 } };
 
@@ -231,16 +242,36 @@ DL.units.forEach(function (u, ui) {
   stats.units++;
 
   ['id', 'icon', 'color'].forEach(function (f) { if (!nonEmptyStr(u[f])) err(uw, 'missing field "' + f + '"'); });
+  Object.keys(u).forEach(function (k) {
+    if (['id', 'icon', 'color', 'level', 'courses', 'title', 'desc', 'tips', 'words', 'sentences'].indexOf(k) < 0) warn(uw, 'unknown unit field "' + k + '"');
+  });
+  // 单元编号取自 id（u9、u10……），必须递增；只检查分片时允许从中间开始
+  var num = nonEmptyStr(u.id) && /^u[1-9]\d*$/.test(u.id) ? +u.id.slice(1) : 0;
   if (nonEmptyStr(u.id)) {
     claimId(u.id, uw);
-    if (u.id !== 'u' + (ui + 1)) err(uw, 'id should be "u' + (ui + 1) + '"');
+    if (!num) err(uw, 'id should look like "u12"');
+    else if (num <= prevNum) err(uw, 'unit ids must increase (after u' + prevNum + ')');
+    else if (!EXTRA.length && num !== prevNum + 1) err(uw, 'unit id should be "u' + (prevNum + 1) + '"');
   }
+  if (num) prevNum = num;
   if (nonEmptyStr(u.color)) {
     if (COLORS.indexOf(u.color) < 0) err(uw, 'color "' + u.color + '" is not one of ' + COLORS.join(', '));
-    else if (colorSeen[u.color]) err(uw, 'color "' + u.color + '" already used by ' + colorSeen[u.color]);
-    else if (u.color !== COLORS[ui]) warn(uw, 'color "' + u.color + '" breaks the expected order (expected "' + COLORS[ui] + '")');
-    colorSeen[u.color] = uw;
+    else if (num && u.color !== COLORS[(num - 1) % COLORS.length]) err(uw, 'color should be "' + COLORS[(num - 1) % COLORS.length] + '" (colours cycle in order)');
   }
+  // courses：只给部分课程用的单元（例如德语课专属的第9单元以后）；不写 = 四门课都用
+  var avail = COURSE_IDS;
+  if (u.courses !== undefined) {
+    if (!Array.isArray(u.courses) || !u.courses.length || u.courses.some(function (c) { return COURSE_IDS.indexOf(c) < 0; })) err(uw, '"courses" must be a non-empty array of ' + COURSE_IDS.join('/'));
+    else avail = u.courses;
+  }
+  var restricted = u.courses !== undefined;
+  var needPy = avail.indexOf('zh') >= 0;
+  var needEmoji = !restricted;
+  if (u.level !== undefined && LEVELS.indexOf(u.level) < 0) err(uw, 'level must be one of ' + LEVELS.join('/'));
+  if (restricted && u.level === undefined) err(uw, 'course-specific units need a "level" (A1/A2/B1)');
+  var TIP_KEYS = avail;
+  var maxTok = restricted ? 12 : MAX_TOKENS;
+  var unitEmoji = {};
   ['title', 'desc'].forEach(function (f) {
     if (!isObj(u[f])) { err(uw, 'missing object "' + f + '"'); return; }
     ['zh', 'en'].forEach(function (l) { if (!nonEmptyStr(u[f][l])) err(uw, 'missing ' + f + '.' + l); });
@@ -269,19 +300,24 @@ DL.units.forEach(function (u, ui) {
       var ww = uw + ' word ' + (wi + 1) + (w && w.id ? ' (' + w.id + ')' : '');
       if (!isObj(w)) { err(ww, 'word is not an object'); return; }
       stats.words++;
-      ['id', 'emoji', 'zh', 'py', 'en', 'de'].forEach(function (f) { if (!nonEmptyStr(w[f])) err(ww, 'missing field "' + f + '"'); });
+      ['id', 'zh', 'en', 'de'].concat(needEmoji ? ['emoji'] : []).concat(needPy ? ['py'] : []).forEach(function (f) { if (!nonEmptyStr(w[f])) err(ww, 'missing field "' + f + '"'); });
+      if (!needPy && w.py !== undefined) warn(ww, '"py" is not needed: this unit is not in the Chinese course');
       Object.keys(w).forEach(function (k) {
         if (['id', 'emoji', 'zh', 'py', 'en', 'de'].indexOf(k) < 0) warn(ww, 'unknown field "' + k + '"');
       });
       if (nonEmptyStr(w.id)) {
-        if (!/^[a-z][a-z0-9]*$/.test(w.id)) err(ww, 'id should be a short lowercase slug');
+        if (restricted) { if (!new RegExp('^' + u.id + '_[a-z][a-z0-9]*$').test(w.id)) err(ww, 'id should be "' + u.id + '_<lowercase slug>"'); }
+        else if (!/^[a-z][a-z0-9]*$/.test(w.id)) err(ww, 'id should be a short lowercase slug');
         claimId(w.id, ww);
       }
-      if (nonEmptyStr(w.emoji)) {
-        var en = w.emoji.replace(/️/g, '');
+      if (w.emoji !== undefined) {
+        var en = String(w.emoji).replace(/️/g, '');
         if (!/\p{Extended_Pictographic}|⃣/u.test(w.emoji)) warn(ww, 'emoji "' + w.emoji + '" does not look like an emoji');
-        if (emojiSeen.hasOwnProperty(en)) err(ww, 'duplicate emoji ' + w.emoji + ' (also used by ' + emojiSeen[en] + ')');
-        else emojiSeen[en] = ww;
+        // 看图选词的干扰项来自同一单元，所以同单元内 emoji 不能重复；前8个单元要求全文件不重复
+        if (unitEmoji.hasOwnProperty(en)) err(ww, 'duplicate emoji ' + w.emoji + ' in the same unit (also ' + unitEmoji[en] + ')');
+        else if (!restricted && emojiSeen.hasOwnProperty(en)) err(ww, 'duplicate emoji ' + w.emoji + ' (also used by ' + emojiSeen[en] + ')');
+        unitEmoji[en] = ww;
+        if (!emojiSeen.hasOwnProperty(en)) emojiSeen[en] = ww;
       }
       var zhToks = null;
       if (nonEmptyStr(w.zh)) {
@@ -317,6 +353,7 @@ DL.units.forEach(function (u, ui) {
 
   // ----- sentences -----
   var unitTokens = {};
+  var deText = '';
   if (!Array.isArray(u.sentences)) {
     err(uw, 'missing array "sentences"');
   } else {
@@ -325,12 +362,13 @@ DL.units.forEach(function (u, ui) {
       var sw = uw + ' sentence ' + (si + 1) + (s && s.id ? ' (' + s.id + ')' : '');
       if (!isObj(s)) { err(sw, 'sentence is not an object'); return; }
       stats.sentences++;
-      ['id', 'zh', 'py', 'en', 'de'].forEach(function (f) { if (!nonEmptyStr(s[f])) err(sw, 'missing field "' + f + '"'); });
+      ['id', 'zh', 'en', 'de'].concat(needPy ? ['py'] : []).forEach(function (f) { if (!nonEmptyStr(s[f])) err(sw, 'missing field "' + f + '"'); });
+      if (!needPy && s.py !== undefined) warn(sw, '"py" is not needed: this unit is not in the Chinese course');
       Object.keys(s).forEach(function (k) {
         if (['id', 'zh', 'py', 'en', 'de', 'alt'].indexOf(k) < 0) warn(sw, 'unknown field "' + k + '"');
       });
       if (nonEmptyStr(s.id)) {
-        var expectId = 'u' + (ui + 1) + 's' + (si + 1);
+        var expectId = u.id + 's' + (si + 1);
         if (s.id !== expectId) err(sw, 'id should be "' + expectId + '"');
         claimId(s.id, sw);
       }
@@ -338,8 +376,8 @@ DL.units.forEach(function (u, ui) {
       var zhToks = nonEmptyStr(s.zh) ? checkZhString(sw + '.zh', s.zh) : null;
       if (zhToks) {
         zhToks.forEach(function (t) { unitTokens[splitPunct(t).core] = true; });
-        if (zhToks.length < MIN_TOKENS || zhToks.length > MAX_TOKENS) {
-          warn(sw, 'zh has ' + zhToks.length + ' words (expected ' + MIN_TOKENS + '-' + MAX_TOKENS + ')');
+        if (zhToks.length < MIN_TOKENS || zhToks.length > maxTok) {
+          warn(sw, 'zh has ' + zhToks.length + ' words (expected ' + MIN_TOKENS + '-' + maxTok + ')');
         }
         checkEndMark(sw + '.zh', 'zh', s.zh);
         if (nonEmptyStr(s.py)) {
@@ -354,7 +392,9 @@ DL.units.forEach(function (u, ui) {
         checkEndMark(sw + '.' + l, l, s[l]);
         var c = s[l].charAt(0);
         if (c !== c.toUpperCase()) warn(sw + '.' + l, 'sentence should start with a capital letter');
+        if (toks.length > maxTok + 2) warn(sw + '.' + l, toks.length + ' words is long for a tile exercise');
       });
+      if (nonEmptyStr(s.de)) deText += ' ' + s.de.toLowerCase();
       if (LANGS.every(function (l) { return nonEmptyStr(s[l]); })) {
         var q = isQuestion(s.zh);
         if (isQuestion(s.en) !== q || isQuestion(s.de) !== q) warn(sw, 'question mark not consistent across zh/en/de');
@@ -398,15 +438,20 @@ DL.units.forEach(function (u, ui) {
     });
   }
 
-  // 每个单词至少在本单元的一个句子里出现（按 zh 词）
+  // 每个单词至少在本单元的一个句子里出现（按 zh 词；德语专属单元也接受德语词干出现）
   if (Array.isArray(u.words) && Array.isArray(u.sentences)) {
     u.words.forEach(function (w) {
-      if (isObj(w) && nonEmptyStr(w.zh) && !unitTokens[w.zh]) warn(uw, 'word "' + w.zh + '" (' + w.id + ') is not used in any of the unit\'s sentences');
+      if (!isObj(w) || !nonEmptyStr(w.zh) || unitTokens[w.zh]) return;
+      if (restricted && nonEmptyStr(w.de)) {
+        var core = w.de.replace(/^(der|die|das|sich) /i, '').toLowerCase().split(' ')[0];
+        var stem = core.slice(0, Math.max(3, core.length - 3));
+        if (deText.indexOf(stem) >= 0) return;
+      }
+      warn(uw, 'word "' + w.zh + '" / "' + w.de + '" (' + w.id + ') is not used in any of the unit\'s sentences');
     });
   }
 });
 
-if (stats.units !== COLORS.length) warn('units', 'found ' + stats.units + ' units, expected ' + COLORS.length);
 
 // ---------- 输出 ----------
 
@@ -430,7 +475,7 @@ console.log('  alts:      ' + stats.alts + ' in ' + stats.altSentences + ' sente
 if (phrases.length) console.log('  multi-word word entries (' + phrases.length + '): ' + phrases.join(', '));
 
 if (errors.length) {
-  console.error('\nFAIL: ' + errors.length + ' error(s) in js/data.js');
+  console.error('\nFAIL: ' + errors.length + ' error(s) in ' + DATA_FILE);
   process.exit(1);
 }
 console.log('\nPASS' + (warnings.length ? ' with ' + warnings.length + ' warning(s)' : ''));

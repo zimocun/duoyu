@@ -147,6 +147,29 @@ rt { font-size: 0.58em; color: var(--sub); font-weight: 600; letter-spacing: 0; 
 .pop.done p:last-child { margin-bottom: 0; }
 @keyframes popin { from { opacity: 0; transform: translate(-50%, -6px) scale(.96); } }
 .pend { text-align: center; padding: 10px 24px 30px; color: var(--sub); font-weight: 700; }
+/* 级别分段与折叠的远期单元 */
+.sect { display: flex; align-items: center; gap: 10px; margin: 26px 18px 0; }
+.sect b { background: var(--text); color: var(--bg); border-radius: 8px; padding: 2px 9px; font-size: 14px; font-weight: 900; letter-spacing: .5px; }
+.sect span { font-weight: 900; font-size: 18px; }
+.sect small { margin-left: auto; color: var(--mute); font-weight: 800; font-size: 13px; }
+.unit.fold { padding-top: 0; }
+.unit.fold .ubar {
+  position: static; background: var(--bg2); color: var(--sub); box-shadow: 0 3px 0 var(--line); border: 2px solid var(--line);
+  padding: 10px 12px 10px 16px; margin-top: 10px;
+}
+.unit.fold .ut b { font-size: 17px; }
+.unit.fold .ug { border-color: var(--line); color: var(--mute); padding: 7px 10px; font-size: 13px; }
+.unit.fold .ug .ic { width: 18px; height: 18px; }
+/* 新词卡与无图词的字母牌 */
+.intro { display: flex; flex-direction: column; align-items: center; gap: 12px; border: 2px solid var(--line); border-radius: 20px; padding: 26px 16px; text-align: center; }
+.iem { font-size: 76px; line-height: 1.1; }
+.iw { display: flex; align-items: center; gap: 12px; }
+.iw b { font-size: 28px; font-weight: 900; }
+.im { font-size: 20px; color: var(--sub); font-weight: 700; }
+.noem {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px;
+  background: var(--blue-bg); color: var(--blue); font-style: normal; font-weight: 900; font-size: 18px; vertical-align: middle;
+}
 
 /* 按钮 */
 .btn {
